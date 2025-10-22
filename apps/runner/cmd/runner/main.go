@@ -29,10 +29,12 @@ import (
 	"github.com/daytonaio/runner/pkg/runner/v2/poller"
 	"github.com/daytonaio/runner/pkg/services"
 	"github.com/daytonaio/runner/pkg/sshgateway"
+	"github.com/daytonaio/runner/pkg/telemetry"
 	"github.com/docker/docker/client"
 	"github.com/joho/godotenv"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
+	"go.opentelemetry.io/otel"
 
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
@@ -47,7 +49,15 @@ func main() {
 		return
 	}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	// Init tracing
+	shutdown, err := telemetry.InitTracing(cfg)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer shutdown()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation(), client.WithTraceProvider(otel.GetTracerProvider()))
 	if err != nil {
 		log.Errorf("Error creating Docker client: %v", err)
 		return
