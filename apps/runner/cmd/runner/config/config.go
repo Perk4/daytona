@@ -23,7 +23,8 @@ type Config struct {
 	TLSCertFile              string        `envconfig:"TLS_CERT_FILE"`
 	TLSKeyFile               string        `envconfig:"TLS_KEY_FILE"`
 	EnableTLS                bool          `envconfig:"ENABLE_TLS"`
-	EnableTracing            bool          `envconfig:"OTEL_ENABLED"`
+	OtelTracingEnabled     	 bool   	   `envconfig:"OTEL_TRACING_ENABLED"`
+	OtelLoggingEnabled     	 bool   	   `envconfig:"OTEL_LOGGING_ENABLED"`
 	CacheRetentionDays       int           `envconfig:"CACHE_RETENTION_DAYS"`
 	Environment              string        `envconfig:"ENVIRONMENT"`
 	ContainerRuntime         string        `envconfig:"CONTAINER_RUNTIME"`

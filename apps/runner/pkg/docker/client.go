@@ -4,7 +4,6 @@
 package docker
 
 import (
-	"io"
 	"sync"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 type DockerClientConfig struct {
 	ApiClient                client.APIClient
 	StatesCache              *cache.StatesCache
-	LogWriter                io.Writer
 	AWSRegion                string
 	AWSEndpointUrl           string
 	AWSAccessKeyId           string
@@ -52,7 +50,6 @@ func NewDockerClient(config DockerClientConfig) *DockerClient {
 	return &DockerClient{
 		apiClient:                config.ApiClient,
 		statesCache:              config.StatesCache,
-		logWriter:                config.LogWriter,
 		awsRegion:                config.AWSRegion,
 		awsEndpointUrl:           config.AWSEndpointUrl,
 		awsAccessKeyId:           config.AWSAccessKeyId,
@@ -77,7 +74,6 @@ func (d *DockerClient) ApiClient() client.APIClient {
 type DockerClient struct {
 	apiClient                client.APIClient
 	statesCache              *cache.StatesCache
-	logWriter                io.Writer
 	awsRegion                string
 	awsEndpointUrl           string
 	awsAccessKeyId           string

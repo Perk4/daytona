@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	golog "log"
-
 	"github.com/daytonaio/runner/cmd/runner/config"
 	"github.com/daytonaio/runner/internal/metrics"
 	"github.com/daytonaio/runner/internal/util"
@@ -35,31 +33,43 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	"go.opentelemetry.io/otel"
-
-	"github.com/rs/zerolog"
-	zlog "github.com/rs/zerolog/log"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	// Init slog logger
+	logger := slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		NoColor:    !isatty.IsTerminal(os.Stdout.Fd()),
+		TimeFormat: time.RFC3339,
+		Level:      util.ParseLogLevel(os.Getenv("LOG_LEVEL")),
+	}))
+
+	slog.SetDefault(logger)
+
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Errorf("Failed to get config: %v", err)
+		logger.Error("Failed to get config", "error", err)
 		return
 	}
 
 	// Init tracing
-	shutdown, err := telemetry.InitTracing(cfg)
+	shutdownTracing, err := telemetry.InitTracing(cfg)
 	if err != nil {
-		log.Error(err)
+		logger.Error("Failed to initialize tracing", "error", err)
 		return
 	}
-	defer shutdown()
+	defer shutdownTracing()
+
+	// Init logging
+	shutdownLogging, err := telemetry.InitLogging(logger, cfg)
+	if err != nil {
+		logger.Error("Failed to initialize OTEL logging", "error", err)
+		return
+	}
+	defer shutdownLogging()
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation(), client.WithTraceProvider(otel.GetTracerProvider()))
 	if err != nil {
-		log.Errorf("Error creating Docker client: %v", err)
+		logger.Error("Error creating Docker client", "error", err)
 		return
 	}
 
@@ -67,26 +77,26 @@ func main() {
 	persistent := cfg.Environment != "development"
 	netRulesManager, err := netrules.NewNetRulesManager(persistent)
 	if err != nil {
-		log.Error(err)
+		logger.Error("Failed to initialize net rules manager", "error", err)
 		return
 	}
 
 	// Start net rules manager
 	if err = netRulesManager.Start(); err != nil {
-		log.Error(err)
+		logger.Error("Failed to start net rules manager", "error", err)
 		return
 	}
 	defer netRulesManager.Stop()
 
 	daemonPath, err := daemon.WriteStaticBinary("daemon-amd64")
 	if err != nil {
-		log.Errorf("Error writing daemon binary: %v", err)
+		logger.Error("Error writing daemon binary", "error", err)
 		return
 	}
 
 	pluginPath, err := daemon.WriteStaticBinary("daytona-computer-use")
 	if err != nil {
-		log.Errorf("Error writing plugin binary: %v", err)
+		logger.Error("Error writing plugin binary", "error", err)
 		return
 	}
 
@@ -98,7 +108,6 @@ func main() {
 	dockerClient := docker.NewDockerClient(docker.DockerClientConfig{
 		ApiClient:                cli,
 		StatesCache:              statesCache,
-		LogWriter:                os.Stdout,
 		AWSRegion:                cfg.AWSRegion,
 		AWSEndpointUrl:           cfg.AWSEndpointUrl,
 		AWSAccessKeyId:           cfg.AWSAccessKeyId,
@@ -142,13 +151,13 @@ func main() {
 		sshGatewayService = sshgateway.NewService(dockerClient)
 
 		go func() {
-			log.Info("Starting SSH Gateway")
+			logger.Info("Starting SSH Gateway")
 			if err := sshGatewayService.Start(ctx); err != nil {
-				log.Errorf("SSH Gateway error: %v", err)
+				logger.Error("SSH Gateway error", "error", err)
 			}
 		}()
 	} else {
-		log.Info("Gateway disabled - set SSH_GATEWAY_ENABLE=true to enable")
+		logger.Info("Gateway disabled - set SSH_GATEWAY_ENABLE=true to enable")
 	}
 
 	// Setup structured logger
@@ -235,12 +244,14 @@ func main() {
 
 	select {
 	case err := <-apiServerErrChan:
-		log.Errorf("API server error: %v", err)
+		logger.Error("API server error", "error", err)
 		return
 	case <-interruptChannel:
 		apiServer.Stop()
 	}
 }
+
+// these methods might be deleted later
 
 func init() {
 	// Load .env file

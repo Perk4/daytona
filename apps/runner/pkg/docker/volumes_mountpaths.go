@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,6 +62,7 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 
 		if d.isDirectoryMounted(runnerVolumeMountPath) {
 			log.Infof("volume %s (subpath: %s) is already mounted to %s", volumeIdPrefixed, subpathStr, runnerVolumeMountPath)
+			slog.InfoContext(ctx, "volume is already mounted", "volumeId", volumeIdPrefixed, "runnerVolumeMountPath", runnerVolumeMountPath)
 			volumeMountPathBinds = append(volumeMountPathBinds, fmt.Sprintf("%s/:%s/", runnerVolumeMountPath, vol.MountPath))
 			continue
 		}
@@ -71,6 +73,7 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 		}
 
 		log.Infof("mounting S3 volume %s (subpath: %s) to %s", volumeIdPrefixed, subpathStr, runnerVolumeMountPath)
+		slog.InfoContext(ctx, "mounting S3 volume", "volumeId", volumeIdPrefixed, "runnerVolumeMountPath", runnerVolumeMountPath)
 
 		cmd := d.getMountCmd(ctx, volumeIdPrefixed, vol.Subpath, runnerVolumeMountPath)
 		err = cmd.Run()
@@ -85,6 +88,7 @@ func (d *DockerClient) getVolumesMountPathBinds(ctx context.Context, volumes []d
 		}
 
 		log.Infof("mounted S3 volume %s (subpath: %s) to %s", volumeIdPrefixed, subpathStr, runnerVolumeMountPath)
+		slog.InfoContext(ctx, "mounted S3 volume", "volumeId", volumeIdPrefixed, "runnerVolumeMountPath", runnerVolumeMountPath)
 
 		volumeMountPathBinds = append(volumeMountPathBinds, fmt.Sprintf("%s/:%s/", runnerVolumeMountPath, vol.MountPath))
 	}

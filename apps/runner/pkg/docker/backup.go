@@ -6,14 +6,14 @@ package docker
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/daytonaio/runner/pkg/api/dto"
 	"github.com/daytonaio/runner/pkg/models/enums"
+	log "github.com/sirupsen/logrus"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type backupContext struct {
@@ -30,7 +30,7 @@ func (d *DockerClient) CreateBackup(ctx context.Context, containerId string, bac
 		backup_context.cancel()
 	}
 
-	log.Infof("Creating backup for container %s...", containerId)
+	slog.InfoContext(ctx, "Creating backup for container", "containerId", containerId)
 
 	return d.createBackup(containerId, backupDto)
 }
