@@ -592,7 +592,7 @@ export class Daytona {
    * }
    */
   public async list(labels?: Record<string, string>, page?: number, limit?: number): Promise<PaginatedSandboxes> {
-    const response = await this.sandboxApi.listSandboxesPaginated(
+    const response = await this.sandboxApi.listSandboxesPaginatedDeprecated(
       undefined,
       page,
       limit,
