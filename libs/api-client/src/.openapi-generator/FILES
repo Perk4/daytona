@@ -112,6 +112,7 @@ models/organization-user.ts
 models/organization.ts
 models/paginated-audit-logs.ts
 models/paginated-jobs.ts
+models/paginated-sandboxes-deprecated.ts
 models/paginated-sandboxes.ts
 models/paginated-snapshots.ts
 models/poll-jobs-response.ts
