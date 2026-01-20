@@ -349,5 +349,5 @@ function getDisplayName(sandbox: Sandbox): string {
 }
 
 function getLastEvent(sandbox: Sandbox): { date: Date; relativeTimeString: string } {
-  return getRelativeTimeString(sandbox.updatedAt)
+  return getRelativeTimeString(sandbox.lastActivityAt)
 }

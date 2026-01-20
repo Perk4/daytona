@@ -66,7 +66,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
   if (!sandbox) return null
 
   const getLastEvent = (sandbox: Sandbox): { date: Date; relativeTimeString: string } => {
-    return getRelativeTimeString(sandbox.updatedAt)
+    return getRelativeTimeString(sandbox.lastActivityAt)
   }
 
   return (
@@ -216,7 +216,7 @@ const SandboxDetailsSheet: React.FC<SandboxDetailsSheetProps> = ({
               <div>
                 <h3 className="text-sm text-muted-foreground">Last event</h3>
                 <p className="mt-1 text-sm font-medium">
-                  <TimestampTooltip timestamp={sandbox.updatedAt}>
+                  <TimestampTooltip timestamp={sandbox.lastActivityAt}>
                     {getLastEvent(sandbox).relativeTimeString}
                   </TimestampTooltip>
                 </p>
