@@ -76,6 +76,8 @@ import { UrlDto } from '../../common/dto/url.dto'
 import { InjectRedis } from '@nestjs-modules/ioredis'
 import { Redis } from 'ioredis'
 import { SANDBOX_EVENT_CHANNEL } from '../../common/constants/constants'
+import { SearchSandboxesQueryDto } from '../dto/search-sandboxes-query.dto'
+import { SearchSandboxesResultDto } from '../dto/search-sandboxes-result.dto'
 
 @ApiTags('sandbox')
 @Controller('sandbox')
@@ -227,6 +229,23 @@ export class SandboxController {
       page: result.page,
       totalPages: result.totalPages,
     }
+  }
+
+  @Get('search')
+  @ApiOperation({
+    summary: 'Search sandboxes',
+    description: 'Advanced filtering and ordering. Eventually consistent.',
+    operationId: 'searchSandboxes',
+  })
+  @ApiResponse({
+    status: 200,
+    type: SearchSandboxesResultDto,
+  })
+  async searchSandboxes(
+    @AuthContext() authContext: OrganizationAuthContext,
+    @Query() query: SearchSandboxesQueryDto,
+  ): Promise<SearchSandboxesResultDto> {
+    return this.sandboxService.search(authContext.organizationId, query)
   }
 
   @Post()

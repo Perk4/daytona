@@ -9,7 +9,6 @@ import {
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
-  getPaginationRowModel,
   VisibilityState,
 } from '@tanstack/react-table'
 import { useMemo, useState, useEffect } from 'react'
@@ -39,12 +38,7 @@ interface UseSandboxTableProps {
   getWebTerminalUrl: (id: string) => Promise<string | null>
   handleCreateSshAccess: (id: string) => void
   handleRevokeSshAccess: (id: string) => void
-  pagination: {
-    pageIndex: number
-    pageSize: number
-  }
-  pageCount: number
-  onPaginationChange: (pagination: { pageIndex: number; pageSize: number }) => void
+  pageSize: number
   sorting: SandboxSorting
   onSortingChange: (sorting: SandboxSorting) => void
   filters: SandboxFilters
@@ -67,9 +61,7 @@ export function useSandboxTable({
   getWebTerminalUrl,
   handleCreateSshAccess,
   handleRevokeSshAccess,
-  pagination,
-  pageCount,
-  onPaginationChange,
+  pageSize,
   sorting,
   onSortingChange,
   filters,
@@ -158,20 +150,13 @@ export function useSandboxTable({
     },
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: true,
-    pageCount: pageCount,
-    onPaginationChange: (updater) => {
-      const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater
-      onPaginationChange(newPagination)
-    },
-    getPaginationRowModel: getPaginationRowModel(),
     state: {
       sorting: tableSorting,
       columnFilters: tableFilters,
       columnVisibility,
       pagination: {
-        pageIndex: pagination.pageIndex,
-        pageSize: pagination.pageSize,
+        pageIndex: 0,
+        pageSize: pageSize,
       },
     },
     onColumnVisibilityChange: setColumnVisibility,
