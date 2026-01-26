@@ -17,7 +17,7 @@ import (
 )
 
 // InitTracing initializes OpenTelemetry tracing
-func InitTracing(otelTracingEnabled bool, environment string) (func(), error) {
+func InitTracing(otelTracingEnabled bool, otelSampleRate float64, environment string) (func(), error) {
 	if !otelTracingEnabled {
 		// Return a no-op shutdown function when tracing is disabled
 		return func() {}, nil
@@ -46,6 +46,7 @@ func InitTracing(otelTracingEnabled bool, environment string) (func(), error) {
 			sdktrace.WithMaxExportBatchSize(100),
 		),
 		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(otelSampleRate))),
 	)
 
 	// Set global trace provider

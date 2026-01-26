@@ -92,7 +92,6 @@ func (a *ApiServer) Start() error {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	a.router.Use(otelgin.Middleware("api"))
 	a.router.Use(sloggin.New(slog.Default()))
 	a.router.Use(common_errors.NewErrorMiddleware(common.HandlePossibleDockerError))
 	a.router.Use(middlewares.RecoverableErrorsMiddleware())

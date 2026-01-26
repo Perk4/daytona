@@ -23,8 +23,9 @@ type Config struct {
 	TLSCertFile              string        `envconfig:"TLS_CERT_FILE"`
 	TLSKeyFile               string        `envconfig:"TLS_KEY_FILE"`
 	EnableTLS                bool          `envconfig:"ENABLE_TLS"`
-	OtelTracingEnabled     	 bool   	   `envconfig:"OTEL_TRACING_ENABLED"`
-	OtelLoggingEnabled     	 bool   	   `envconfig:"OTEL_LOGGING_ENABLED"`
+	OtelLoggingEnabled       bool          `envconfig:"OTEL_LOGGING_ENABLED"`
+	OtelTracingEnabled       bool          `envconfig:"OTEL_TRACING_ENABLED"`
+	OtelSampleRate           float64       `envconfig:"OTEL_SAMPLE_RATE" default:"0.1" validate:"min=0,max=1"`
 	CacheRetentionDays       int           `envconfig:"CACHE_RETENTION_DAYS"`
 	Environment              string        `envconfig:"ENVIRONMENT"`
 	ContainerRuntime         string        `envconfig:"CONTAINER_RUNTIME"`

@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// Init tracing
-	shutdownTracing, err := telemetry.InitTracing(cfg.OtelTracingEnabled, cfg.Environment)
+	shutdownTracing, err := telemetry.InitTracing(cfg.OtelTracingEnabled, cfg.OtelSampleRate, cfg.Environment)
 	if err != nil {
 		logger.Error("Failed to initialize tracing", "error", err)
 		return
