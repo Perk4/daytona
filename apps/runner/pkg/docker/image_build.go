@@ -27,7 +27,7 @@ func (d *DockerClient) BuildImage(ctx context.Context, buildImageDto dto.BuildSn
 		return fmt.Errorf("invalid image format: must contain exactly one colon (e.g., 'myimage:1.0')")
 	}
 
-	d.log.InfoContext(ctx, "Building image...")
+	d.log.InfoContext(ctx, "Building image")
 
 	// Check if image already exists
 	exists, err := d.ImageExists(ctx, buildImageDto.Snapshot, true)
