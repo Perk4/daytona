@@ -16,22 +16,29 @@ import (
 	otellog "go.opentelemetry.io/otel/sdk/log"
 )
 
+type OtelLoggingConfig struct {
+	Logger              *slog.Logger
+	OtelLoggingEnabled  bool
+	OtlpExporterTimeout time.Duration
+	Environment         string
+}
+
 // InitLogging optionally adds OTEL log shipping to the provided slog instance
 // If OTEL logging is enabled, it sets up the global slog handler to fanout to both console and OTEL
 // Returns a shutdown function (no-op if OTEL is disabled)
-func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, otlpExporterTimeout time.Duration, environment string) (func(), error) {
-	if !otelLoggingEnabled {
+func InitLogging(cfg OtelLoggingConfig) (func(), error) {
+	if !cfg.OtelLoggingEnabled {
 		return func() {}, nil
 	}
 
 	// Create resource with service information
-	res, err := getOtelResource(environment)
+	res, err := getOtelResource(cfg.Environment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	// Create OTLP log exporter
-	ctx, cancel := context.WithTimeout(context.Background(), otlpExporterTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.OtlpExporterTimeout)
 	defer cancel()
 	exporter, err := otlploghttp.New(ctx)
 	if err != nil {
@@ -54,13 +61,13 @@ func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, otlpExporterTimeo
 	// This ensures that logs exported to OTEL respect the same LOG_LEVEL as console logs
 	filteredOtelHandler := &levelFilterHandler{
 		handler:  otelHandler,
-		minLevel: logger.Handler(),
+		minLevel: cfg.Logger.Handler(),
 	}
 
 	// Create fanout handler combining existing logger's handler and filtered OTEL handler
 	fanoutHandler := &multiHandler{
 		handlers: []slog.Handler{
-			logger.Handler(),
+			cfg.Logger.Handler(),
 			filteredOtelHandler,
 		},
 	}

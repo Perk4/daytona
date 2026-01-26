@@ -16,9 +16,18 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+type OtelTracingConfig struct {
+	OtelTracingEnabled  bool
+	OtelSampleRate      float64
+	OtelBatchTimeout    time.Duration
+	OtelMaxBatchSize    int
+	OtlpExporterTimeout time.Duration
+	Environment         string
+}
+
 // InitTracing initializes OpenTelemetry tracing
-func InitTracing(otelTracingEnabled bool, otelSampleRate float64, otlpExporterTimeout time.Duration, environment string) (func(), error) {
-	if !otelTracingEnabled {
+func InitTracing(cfg OtelTracingConfig) (func(), error) {
+	if !cfg.OtelTracingEnabled {
 		// Return a no-op shutdown function when tracing is disabled
 		return func() {}, nil
 	}
@@ -29,13 +38,13 @@ func InitTracing(otelTracingEnabled bool, otelSampleRate float64, otlpExporterTi
 	}))
 
 	// Create resource with service information
-	res, err := getOtelResource(environment)
+	res, err := getOtelResource(cfg.Environment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	// Create OTLP exporter
-	ctx, cancel := context.WithTimeout(context.Background(), otlpExporterTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.OtlpExporterTimeout)
 	defer cancel()
 	exporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
@@ -45,11 +54,11 @@ func InitTracing(otelTracingEnabled bool, otelSampleRate float64, otlpExporterTi
 	// Create trace provider
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter,
-			sdktrace.WithBatchTimeout(5*time.Second),
-			sdktrace.WithMaxExportBatchSize(100),
+			sdktrace.WithBatchTimeout(cfg.OtelBatchTimeout),
+			sdktrace.WithMaxExportBatchSize(cfg.OtelMaxBatchSize),
 		),
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(otelSampleRate))),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OtelSampleRate))),
 	)
 
 	// Set global trace provider

@@ -49,14 +49,26 @@ func main() {
 	}
 
 	// Init tracing
-	shutdownTracing, err := telemetry.InitTracing(cfg.OtelTracingEnabled, cfg.OtelSampleRate, cfg.OtlpExporterTimeout, cfg.Environment)
+	shutdownTracing, err := telemetry.InitTracing(telemetry.OtelTracingConfig{
+		OtelTracingEnabled:  cfg.OtelTracingEnabled,
+		OtelSampleRate:      cfg.OtelSampleRate,
+		OtelBatchTimeout:    cfg.OtelBatchTimeout,
+		OtelMaxBatchSize:    cfg.OtelMaxBatchSize,
+		OtlpExporterTimeout: cfg.OtlpExporterTimeout,
+		Environment:         cfg.Environment,
+	})
 	if err != nil {
 		logger.Error("Failed to initialize tracing", "error", err)
 		return
 	}
 
 	// Init logging
-	shutdownLogging, err := telemetry.InitLogging(logger, cfg.OtelLoggingEnabled, cfg.OtlpExporterTimeout, cfg.Environment)
+	shutdownLogging, err := telemetry.InitLogging(telemetry.OtelLoggingConfig{
+		Logger:              logger,
+		OtelLoggingEnabled:  cfg.OtelLoggingEnabled,
+		OtlpExporterTimeout: cfg.OtlpExporterTimeout,
+		Environment:         cfg.Environment,
+	})
 	if err != nil {
 		logger.Error("Failed to initialize OTEL logging", "error", err)
 		return

@@ -26,6 +26,8 @@ type Config struct {
 	OtelLoggingEnabled       bool          `envconfig:"OTEL_LOGGING_ENABLED"`
 	OtelTracingEnabled       bool          `envconfig:"OTEL_TRACING_ENABLED"`
 	OtelSampleRate           float64       `envconfig:"OTEL_SAMPLE_RATE" default:"0.1" validate:"min=0,max=1"`
+	OtelBatchTimeout         time.Duration `envconfig:"OTEL_BATCH_TIMEOUT" default:"5s" validate:"min=1s"`
+	OtelMaxBatchSize         int           `envconfig:"OTEL_MAX_BATCH_SIZE" default:"100" validate:"min=1"`
 	OtlpExporterTimeout      time.Duration `envconfig:"OTLP_EXPORTER_TIMEOUT" default:"10s" validate:"min=1s"`
 	CacheRetentionDays       int           `envconfig:"CACHE_RETENTION_DAYS"`
 	Environment              string        `envconfig:"ENVIRONMENT"`
