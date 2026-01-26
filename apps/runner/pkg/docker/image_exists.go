@@ -5,7 +5,6 @@ package docker
 
 import (
 	"context"
-	"log/slog"
 	"strings"
 
 	"github.com/docker/docker/api/types/image"
@@ -49,7 +48,7 @@ func (d *DockerClient) ImageExists(ctx context.Context, imageName string, includ
 	}
 
 	if found {
-		slog.InfoContext(ctx, "Image already pulled", "imageName", imageName)
+		d.log.InfoContext(ctx, "Image already pulled", "imageName", imageName)
 	}
 
 	return found, nil

@@ -4,17 +4,18 @@
 package docker
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/daytonaio/runner/pkg/cache"
 	"github.com/daytonaio/runner/pkg/netrules"
 	"github.com/docker/docker/client"
-	log "github.com/sirupsen/logrus"
 )
 
 type DockerClientConfig struct {
 	ApiClient                client.APIClient
+	Logger                   *slog.Logger
 	StatesCache              *cache.StatesCache
 	AWSRegion                string
 	AWSEndpointUrl           string
@@ -33,22 +34,23 @@ type DockerClientConfig struct {
 
 func NewDockerClient(config DockerClientConfig) *DockerClient {
 	if config.DaemonStartTimeoutSec <= 0 {
-		log.Warnf("Invalid DaemonStartTimeoutSec value: %d. Using default value: 60 seconds", config.DaemonStartTimeoutSec)
+		config.Logger.Warn("Invalid daemon start timeout value. Using default value of 60 seconds")
 		config.DaemonStartTimeoutSec = 60
 	}
 
 	if config.SandboxStartTimeoutSec <= 0 {
-		log.Warnf("Invalid SandboxStartTimeoutSec value: %d. Using default value: 30 seconds", config.SandboxStartTimeoutSec)
+		config.Logger.Warn("Invalid sandbox start timeout value. Using default value of 30 seconds")
 		config.SandboxStartTimeoutSec = 30
 	}
 
 	if config.BackupTimeoutMin <= 0 {
-		log.Warnf("Invalid BackupTimeoutMin value: %d. Using default value: 60 minutes", config.BackupTimeoutMin)
+		config.Logger.Warn("Invalid backup timeout value. Using default value of 60 minutes")
 		config.BackupTimeoutMin = 60
 	}
 
 	return &DockerClient{
 		apiClient:                config.ApiClient,
+		log:                      config.Logger.With(slog.String("component", "docker")),
 		statesCache:              config.StatesCache,
 		awsRegion:                config.AWSRegion,
 		awsEndpointUrl:           config.AWSEndpointUrl,
@@ -73,6 +75,7 @@ func (d *DockerClient) ApiClient() client.APIClient {
 
 type DockerClient struct {
 	apiClient                client.APIClient
+	log                      *slog.Logger
 	statesCache              *cache.StatesCache
 	awsRegion                string
 	awsEndpointUrl           string

@@ -1,4 +1,4 @@
-// Copyright 2025 Daytona Platforms Inc.
+// Copyright Daytona Platforms Inc.
 // SPDX-License-Identifier: AGPL-3.0
 
 package telemetry
@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/daytonaio/runner/cmd/runner/config"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/log/global"
@@ -20,15 +19,15 @@ import (
 // InitLogging optionally adds OTEL log shipping to the provided slog instance
 // If OTEL logging is enabled, it sets up the global slog handler to fanout to both console and OTEL
 // Returns a shutdown function (no-op if OTEL is disabled)
-func InitLogging(logger *slog.Logger, cfg *config.Config) (func(), error) {
-	if !cfg.OtelLoggingEnabled {
+func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, environment string) (func(), error) {
+	if !otelLoggingEnabled {
 		return func() {}, nil
 	}
 
 	ctx := context.Background()
 
 	// Create resource with service information
-	res, err := getOtelResource(cfg)
+	res, err := getOtelResource(environment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}

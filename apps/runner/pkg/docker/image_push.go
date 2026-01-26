@@ -6,7 +6,6 @@ package docker
 import (
 	"context"
 	"io"
-	"log/slog"
 
 	"github.com/daytonaio/runner/internal/util"
 	"github.com/daytonaio/runner/pkg/api/dto"
@@ -16,7 +15,7 @@ import (
 )
 
 func (d *DockerClient) PushImage(ctx context.Context, imageName string, reg *dto.RegistryDTO) error {
-	slog.InfoContext(ctx, "Pushing image", "imageName", imageName)
+	d.log.InfoContext(ctx, "Pushing image", "imageName", imageName)
 
 	responseBody, err := d.apiClient.ImagePush(ctx, imageName, image.PushOptions{
 		RegistryAuth: getRegistryAuth(reg),
@@ -31,7 +30,7 @@ func (d *DockerClient) PushImage(ctx context.Context, imageName string, reg *dto
 		return err
 	}
 
-	slog.InfoContext(ctx, "Image pushed successfully", "imageName", imageName)
+	d.log.InfoContext(ctx, "Image pushed successfully", "imageName", imageName)
 
 	return nil
 }

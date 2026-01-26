@@ -1,7 +1,7 @@
-package telemetry
-
-// Copyright 2025 Daytona Platforms Inc.
+// Copyright Daytona Platforms Inc.
 // SPDX-License-Identifier: AGPL-3.0
+
+package telemetry
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/daytonaio/runner/cmd/runner/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -18,8 +17,8 @@ import (
 )
 
 // InitTracing initializes OpenTelemetry tracing
-func InitTracing(cfg *config.Config) (func(), error) {
-	if !cfg.OtelTracingEnabled {
+func InitTracing(otelTracingEnabled bool, environment string) (func(), error) {
+	if !otelTracingEnabled {
 		// Return a no-op shutdown function when tracing is disabled
 		return func() {}, nil
 	}
@@ -30,7 +29,7 @@ func InitTracing(cfg *config.Config) (func(), error) {
 	}))
 
 	// Create resource with service information
-	res, err := getOtelResource(cfg)
+	res, err := getOtelResource(environment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}

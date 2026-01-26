@@ -18,14 +18,16 @@ import (
 )
 
 type Service struct {
+	log          *slog.Logger
 	dockerClient *docker.DockerClient
 	port         int
 }
 
-func NewService(dockerClient *docker.DockerClient) *Service {
+func NewService(logger *slog.Logger, dockerClient *docker.DockerClient) *Service {
 	port := GetSSHGatewayPort()
 
 	service := &Service{
+		log:          logger.With(slog.String("component", "ssh_gateway_service")),
 		dockerClient: dockerClient,
 		port:         port,
 	}
@@ -72,7 +74,7 @@ func (s *Service) Start(ctx context.Context) error {
 				}, nil
 			}
 
-			slog.WarnContext(ctx, "Public key authentication failed for sandbox", "sandboxID", sandboxId)
+			s.log.WarnContext(ctx, "Public key authentication failed for sandbox", "sandboxID", sandboxId)
 			return nil, fmt.Errorf("authentication failed")
 		},
 		NoClientAuth: false,
@@ -86,7 +88,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 	defer listener.Close()
 
-	slog.InfoContext(ctx, "SSH Gateway listening on port", "port", s.port)
+	s.log.InfoContext(ctx, "SSH Gateway listening on port", "port", s.port)
 
 	for {
 		select {
@@ -95,7 +97,7 @@ func (s *Service) Start(ctx context.Context) error {
 		default:
 			conn, err := listener.Accept()
 			if err != nil {
-				slog.WarnContext(ctx, "Failed to accept incoming connection", "error", err)
+				s.log.WarnContext(ctx, "Failed to accept incoming connection", "error", err)
 				continue
 			}
 
@@ -111,7 +113,7 @@ func (s *Service) handleConnection(conn net.Conn, serverConfig *ssh.ServerConfig
 	// Perform SSH handshake
 	serverConn, chans, reqs, err := ssh.NewServerConn(conn, serverConfig)
 	if err != nil {
-		slog.Warn("Failed to handshake", "error", err)
+		s.log.Warn("Failed to handshake", "error", err)
 		return
 	}
 	defer serverConn.Close()
@@ -124,12 +126,12 @@ func (s *Service) handleConnection(conn net.Conn, serverConfig *ssh.ServerConfig
 			if req == nil {
 				continue
 			}
-			slog.Debug("Global request", "requestType", req.Type)
+			s.log.Debug("Global request", "requestType", req.Type)
 			// For now, just discard requests, but in a full implementation
 			// these would be forwarded to the sandbox
 			if req.WantReply {
 				if err := req.Reply(false, []byte("not implemented")); err != nil {
-					slog.Warn("Failed to reply to global request", "error", err)
+					s.log.Warn("Failed to reply to global request", "error", err)
 				}
 			}
 		}
@@ -143,12 +145,12 @@ func (s *Service) handleConnection(conn net.Conn, serverConfig *ssh.ServerConfig
 
 // handleChannel handles an individual SSH channel
 func (s *Service) handleChannel(newChannel ssh.NewChannel, sandboxId string) {
-	slog.Debug("New channel", "channelType", newChannel.ChannelType(), "sandboxID", sandboxId)
+	s.log.Debug("New channel", "channelType", newChannel.ChannelType(), "sandboxID", sandboxId)
 
 	// Accept the channel from the client
 	clientChannel, clientRequests, err := newChannel.Accept()
 	if err != nil {
-		slog.Warn("Could not accept client channel", "error", err)
+		s.log.Warn("Could not accept client channel", "error", err)
 		return
 	}
 	defer clientChannel.Close()
@@ -156,7 +158,7 @@ func (s *Service) handleChannel(newChannel ssh.NewChannel, sandboxId string) {
 	// Connect to the sandbox container via toolbox
 	sandboxChannel, sandboxRequests, err := s.connectToSandbox(sandboxId, newChannel.ChannelType(), newChannel.ExtraData())
 	if err != nil {
-		slog.Warn("Could not connect to sandbox", "sandboxID", sandboxId, "error", err)
+		s.log.Warn("Could not connect to sandbox", "sandboxID", sandboxId, "error", err)
 		clientChannel.Close()
 		return
 	}
@@ -168,18 +170,18 @@ func (s *Service) handleChannel(newChannel ssh.NewChannel, sandboxId string) {
 			if req == nil {
 				return
 			}
-			slog.Debug("Client request", "requestType", req.Type, "sandboxID", sandboxId)
+			s.log.Debug("Client request", "requestType", req.Type, "sandboxID", sandboxId)
 
 			ok, err := sandboxChannel.SendRequest(req.Type, req.WantReply, req.Payload)
 			if req.WantReply {
 				if err != nil {
-					slog.Warn("Failed to send request to sandbox", "requestType", req.Type, "sandboxID", sandboxId, "error", err)
+					s.log.Warn("Failed to send request to sandbox", "requestType", req.Type, "sandboxID", sandboxId, "error", err)
 					if replyErr := req.Reply(false, []byte(err.Error())); replyErr != nil {
-						slog.Warn("Failed to reply to client request", "error", replyErr)
+						s.log.Warn("Failed to reply to client request", "error", replyErr)
 					}
 				} else {
 					if replyErr := req.Reply(ok, nil); replyErr != nil {
-						slog.Warn("Failed to reply to client request", "error", replyErr)
+						s.log.Warn("Failed to reply to client request", "error", replyErr)
 					}
 				}
 			}
@@ -192,18 +194,18 @@ func (s *Service) handleChannel(newChannel ssh.NewChannel, sandboxId string) {
 			if req == nil {
 				return
 			}
-			slog.Debug("Sandbox request", "requestType", req.Type, "sandboxID", sandboxId)
+			s.log.Debug("Sandbox request", "requestType", req.Type, "sandboxID", sandboxId)
 
 			ok, err := clientChannel.SendRequest(req.Type, req.WantReply, req.Payload)
 			if req.WantReply {
 				if err != nil {
-					slog.Warn("Failed to send request to client", "requestType", req.Type, "sandboxID", sandboxId, "error", err)
+					s.log.Warn("Failed to send request to client", "requestType", req.Type, "sandboxID", sandboxId, "error", err)
 					if replyErr := req.Reply(false, []byte(err.Error())); replyErr != nil {
-						slog.Warn("Failed to reply to sandbox request", "error", replyErr)
+						s.log.Warn("Failed to reply to sandbox request", "error", replyErr)
 					}
 				} else {
 					if replyErr := req.Reply(ok, nil); replyErr != nil {
-						slog.Warn("Failed to reply to sandbox request", "error", replyErr)
+						s.log.Warn("Failed to reply to sandbox request", "error", replyErr)
 					}
 				}
 			}
@@ -214,16 +216,16 @@ func (s *Service) handleChannel(newChannel ssh.NewChannel, sandboxId string) {
 	go func() {
 		_, err := io.Copy(sandboxChannel, clientChannel)
 		if err != nil {
-			slog.Debug("Client to sandbox copy error", "error", err)
+			s.log.Debug("Client to sandbox copy error", "error", err)
 		}
 	}()
 
 	_, err = io.Copy(clientChannel, sandboxChannel)
 	if err != nil {
-		slog.Debug("Sandbox to client copy error", "error", err)
+		s.log.Debug("Sandbox to client copy error", "error", err)
 	}
 
-	slog.Debug("Channel closed for sandbox", "sandboxID", sandboxId)
+	s.log.Debug("Channel closed for sandbox", "sandboxID", sandboxId)
 }
 
 // connectToSandbox connects to the sandbox container via the toolbox

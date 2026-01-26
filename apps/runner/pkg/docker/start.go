@@ -6,7 +6,6 @@ package docker
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"slices"
 	"time"
 
@@ -72,7 +71,7 @@ func (d *DockerClient) Start(ctx context.Context, containerId string, metadata m
 		processesCtx := context.Background()
 		go func() {
 			if err := d.startDaytonaDaemon(processesCtx, containerId, c.Config.WorkingDir); err != nil {
-				slog.ErrorContext(ctx, "Failed to start Daytona daemon", "error", err)
+				d.log.ErrorContext(ctx, "Failed to start Daytona daemon", "error", err)
 			}
 		}()
 	}
@@ -92,7 +91,7 @@ func (d *DockerClient) Start(ctx context.Context, containerId string, metadata m
 			containerShortId := c.ID[:12]
 			err = d.netRulesManager.SetNetworkLimiter(containerShortId, containerIP)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to set network limiter", "error", err)
+				d.log.ErrorContext(ctx, "Failed to set network limiter", "error", err)
 			}
 		}()
 	}

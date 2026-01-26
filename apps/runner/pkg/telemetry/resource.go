@@ -7,13 +7,12 @@ import (
 	"context"
 	"os"
 
-	"github.com/daytonaio/runner/cmd/runner/config"
 	"github.com/daytonaio/runner/internal"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
-func getOtelResource(cfg *config.Config) (*resource.Resource, error) {
+func getOtelResource(environment string) (*resource.Resource, error) {
 	hostname, err := os.Hostname()
 	if err != nil || hostname == "" {
 		hostname = "unknown"
@@ -24,7 +23,7 @@ func getOtelResource(cfg *config.Config) (*resource.Resource, error) {
 			semconv.ServiceName("daytona-runner"),
 			semconv.ServiceVersion(internal.Version),
 			semconv.ServiceInstanceID(hostname),
-			semconv.DeploymentEnvironmentName(cfg.Environment),
+			semconv.DeploymentEnvironmentName(environment),
 		),
 		resource.WithTelemetrySDK(),
 	)

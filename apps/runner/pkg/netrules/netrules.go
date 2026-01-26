@@ -16,6 +16,7 @@ import (
 
 // NetRulesManager provides thread-safe operations for managing network rules
 type NetRulesManager struct {
+	log        *slog.Logger
 	ipt        *iptables.IPTables
 	mu         sync.Mutex
 	persistent bool
@@ -24,7 +25,7 @@ type NetRulesManager struct {
 }
 
 // NewNetRulesManager creates a new instance of NetRulesManager
-func NewNetRulesManager(persistent bool) (*NetRulesManager, error) {
+func NewNetRulesManager(logger *slog.Logger, persistent bool) (*NetRulesManager, error) {
 	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
 	if err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func NewNetRulesManager(persistent bool) (*NetRulesManager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &NetRulesManager{
+		log:        logger.With(slog.String("component", "netrules_manager")),
 		ipt:        ipt,
 		persistent: persistent,
 		ctx:        ctx,
@@ -131,16 +133,16 @@ func (manager *NetRulesManager) persistRulesLoop() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	slog.Info("Starting iptables persistence loop")
+	manager.log.Info("Starting iptables persistence loop")
 
 	for {
 		select {
 		case <-manager.ctx.Done():
-			slog.Info("Stopping iptables persistence loop")
+			manager.log.Info("Stopping iptables persistence loop")
 			return
 		case <-ticker.C:
 			if err := manager.saveIptablesRules(); err != nil {
-				slog.Error("Failed to save iptables rules", "error", err)
+				manager.log.Error("Failed to save iptables rules", "error", err)
 			}
 		}
 	}

@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"strings"
 
 	"github.com/daytonaio/common-go/pkg/timer"
@@ -42,7 +41,7 @@ func (d *DockerClient) PullImage(ctx context.Context, imageName string, reg *dto
 		}
 	}
 
-	slog.InfoContext(ctx, "Pulling image", "imageName", imageName)
+	d.log.InfoContext(ctx, "Pulling image", "imageName", imageName)
 
 	sandboxIdValue := ctx.Value(constants.ID_KEY)
 
@@ -65,7 +64,7 @@ func (d *DockerClient) PullImage(ctx context.Context, imageName string, reg *dto
 		return err
 	}
 
-	slog.InfoContext(ctx, "Image pulled successfully", "imageName", imageName)
+	d.log.InfoContext(ctx, "Image pulled successfully", "imageName", imageName)
 
 	return nil
 }

@@ -6,7 +6,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/daytonaio/runner/pkg/common"
 	"github.com/daytonaio/runner/pkg/models/enums"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	log "github.com/sirupsen/logrus"
 
 	common_errors "github.com/daytonaio/common-go/pkg/errors"
 )
@@ -68,10 +66,8 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 
 	err = d.validateImageArchitecture(ctx, sandboxDto.Snapshot)
 	if err != nil {
-		log.Errorf("ERROR: %s.\n", err.Error())
+		d.log.ErrorContext(ctx, "Failed to validate image architecture", "error", err)
 		return "", "", err
-		slog.ErrorContext(ctx, "Failed to validate image architecture", "error", err)
-		return "", err
 	}
 
 	volumeMountPathBinds := make([]string, 0)
@@ -107,7 +103,7 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 	containerShortId := c.ID[:12]
 	info, err := d.apiClient.ContainerInspect(context.Background(), sandboxDto.Id)
 	if err != nil {
-		slog.ErrorContext(ctx, "Failed to inspect container", "error", err)
+		d.log.ErrorContext(ctx, "Failed to inspect container", "error", err)
 	}
 	ip := common.GetContainerIpAddress(ctx, info)
 
@@ -115,14 +111,14 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 		go func() {
 			err = d.netRulesManager.SetNetworkRules(containerShortId, ip, "")
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
+				d.log.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
 			}
 		}()
 	} else if sandboxDto.NetworkAllowList != nil && *sandboxDto.NetworkAllowList != "" {
 		go func() {
 			err = d.netRulesManager.SetNetworkRules(containerShortId, ip, *sandboxDto.NetworkAllowList)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
+				d.log.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
 			}
 		}()
 	}
@@ -131,7 +127,7 @@ func (d *DockerClient) Create(ctx context.Context, sandboxDto dto.CreateSandboxD
 		go func() {
 			err = d.netRulesManager.SetNetworkLimiter(containerShortId, ip)
 			if err != nil {
-				slog.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
+				d.log.ErrorContext(ctx, "Failed to update sandbox network settings", "error", err)
 			}
 		}()
 	}

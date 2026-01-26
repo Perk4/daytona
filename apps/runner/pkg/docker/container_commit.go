@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -18,32 +17,32 @@ func (d *DockerClient) commitContainer(ctx context.Context, containerId, imageNa
 	const maxRetries = 3
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		slog.InfoContext(ctx, "Committing container", "containerId", containerId, "attempt", attempt, "maxRetries", maxRetries)
+		d.log.InfoContext(ctx, "Committing container", "containerId", containerId, "attempt", attempt, "maxRetries", maxRetries)
 
 		commitResp, err := d.apiClient.ContainerCommit(ctx, containerId, container.CommitOptions{
 			Reference: imageName,
 			Pause:     false,
 		})
 		if err == nil {
-			slog.InfoContext(ctx, "Container committed successfully", "containerId", containerId, "imageId", commitResp.ID)
+			d.log.InfoContext(ctx, "Container committed successfully", "containerId", containerId, "imageId", commitResp.ID)
 			return nil
 		}
 
 		// Check if the error is related to "failed to get digest" and try export/import fallback
 		if strings.Contains(err.Error(), "Error response from daemon: failed to get digest") {
-			slog.WarnContext(ctx, "Commit failed with digest error, attempting export/import fallback for container", "containerId", containerId)
+			d.log.WarnContext(ctx, "Commit failed with digest error, attempting export/import fallback for container", "containerId", containerId)
 
 			err = d.exportImportContainer(ctx, containerId, imageName)
 			if err == nil {
-				slog.InfoContext(ctx, "Container successfully backed up using export/import method", "containerId", containerId)
+				d.log.InfoContext(ctx, "Container successfully backed up using export/import method", "containerId", containerId)
 				return nil
 			}
 
-			slog.ErrorContext(ctx, "Export/import fallback also failed for container", "containerId", containerId, "error", err)
+			d.log.ErrorContext(ctx, "Export/import fallback also failed for container", "containerId", containerId, "error", err)
 		}
 
 		if attempt < maxRetries {
-			slog.WarnContext(ctx, "Failed to commit container", "containerId", containerId, "attempt", attempt, "maxRetries", maxRetries, "error", err)
+			d.log.WarnContext(ctx, "Failed to commit container", "containerId", containerId, "attempt", attempt, "maxRetries", maxRetries, "error", err)
 			continue
 		}
 
@@ -54,7 +53,7 @@ func (d *DockerClient) commitContainer(ctx context.Context, containerId, imageNa
 }
 
 func (d *DockerClient) exportImportContainer(ctx context.Context, containerId, imageName string) error {
-	slog.InfoContext(ctx, "Exporting container and importing as image", "containerId", containerId, "imageName", imageName)
+	d.log.InfoContext(ctx, "Exporting container and importing as image", "containerId", containerId, "imageName", imageName)
 
 	// First, inspect the container to get its configuration
 	containerInfo, err := d.apiClient.ContainerInspect(ctx, containerId)
@@ -122,7 +121,7 @@ func (d *DockerClient) exportImportContainer(ctx context.Context, containerId, i
 	// Apply the changes
 	importOptions.Changes = changes
 
-	slog.InfoContext(ctx, "Applying configuration changes", "changes", changes)
+	d.log.InfoContext(ctx, "Applying configuration changes", "changes", changes)
 
 	importResponse, err := d.apiClient.ImageImport(ctx, image.ImportSource{
 		Source:     exportReader,
@@ -139,7 +138,7 @@ func (d *DockerClient) exportImportContainer(ctx context.Context, containerId, i
 		return fmt.Errorf("failed to read import response for container %s: %w", containerId, err)
 	}
 
-	slog.InfoContext(ctx, "Container successfully exported and imported as image with preserved configuration", "containerId", containerId, "imageName", imageName)
+	d.log.InfoContext(ctx, "Container successfully exported and imported as image with preserved configuration", "containerId", containerId, "imageName", imageName)
 	return nil
 }
 

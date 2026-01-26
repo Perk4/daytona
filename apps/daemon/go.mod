@@ -32,8 +32,6 @@ require (
 	github.com/swaggo/swag v1.16.4
 	golang.org/x/crypto v0.45.0
 	golang.org/x/sys v0.38.0
-	golang.org/x/crypto v0.41.0
-	golang.org/x/sys v0.35.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
@@ -95,23 +93,11 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.32.0 // indirect
-	golang.org/x/arch v0.16.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
+	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
-	golang.org/x/arch v0.18.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
-	google.golang.org/grpc v1.69.4 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
-	golang.org/x/arch v0.20.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/grpc v1.75.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect

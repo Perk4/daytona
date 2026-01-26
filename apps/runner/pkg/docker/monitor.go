@@ -23,17 +23,19 @@ type MonitorOptions struct {
 
 type DockerMonitor struct {
 	apiClient       client.APIClient
+	log             *slog.Logger
 	ctx             context.Context
 	cancel          context.CancelFunc
 	netRulesManager *netrules.NetRulesManager
 	opts            MonitorOptions
 }
 
-func NewDockerMonitor(apiClient client.APIClient, netRulesManager *netrules.NetRulesManager, opts MonitorOptions) *DockerMonitor {
+func NewDockerMonitor(logger *slog.Logger, apiClient client.APIClient, netRulesManager *netrules.NetRulesManager, opts MonitorOptions) *DockerMonitor {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &DockerMonitor{
 		apiClient:       apiClient,
+		log:             logger.With(slog.String("component", "docker_monitor")),
 		ctx:             ctx,
 		cancel:          cancel,
 		netRulesManager: netRulesManager,
@@ -47,7 +49,7 @@ func (dm *DockerMonitor) Stop() {
 
 func (dm *DockerMonitor) Start() error {
 
-	slog.Info("Starting Docker monitor")
+	dm.log.Info("Starting Docker monitor")
 
 	// Start periodic reconciliation
 	go dm.reconcilerLoop()
@@ -56,18 +58,18 @@ func (dm *DockerMonitor) Start() error {
 	for {
 		select {
 		case <-dm.ctx.Done():
-			slog.Info("Context cancelled, stopping monitor...")
+			dm.log.Info("Context cancelled, stopping monitor...")
 			return dm.ctx.Err()
 
 		default:
 			if err := dm.monitorEvents(); err != nil {
 				if isConnectionError(err) {
-					slog.Warn("Events stream ended", "error", err)
-					slog.Info("Reopening events stream in 2 seconds...")
+					dm.log.Warn("Events stream ended", "error", err)
+					dm.log.Info("Reopening events stream in 2 seconds...")
 					time.Sleep(2 * time.Second)
 					continue
 				} else {
-					slog.Error("Fatal error in monitoring", "error", err)
+					dm.log.Error("Fatal error in monitoring", "error", err)
 					return err
 				}
 			}
@@ -120,12 +122,12 @@ func (dm *DockerMonitor) monitorEvents() error {
 	for {
 		select {
 		case event := <-eventsChan:
-			slog.Debug("Received event", "event", event)
+			dm.log.Debug("Received event", "event", event)
 			dm.handleContainerEvent(event)
 
 		case err := <-errsChan:
 			if err != nil {
-				slog.Warn("Events stream ended", "error", err)
+				dm.log.Warn("Events stream ended", "error", err)
 				return err
 			}
 
@@ -143,30 +145,30 @@ func (dm *DockerMonitor) handleContainerEvent(event events.Message) {
 	case "start":
 		ct, err := dm.apiClient.ContainerInspect(dm.ctx, containerID)
 		if err != nil {
-			slog.Error("Error inspecting container", "error", err)
+			dm.log.Error("Error inspecting container", "error", err)
 			return
 		}
 		shortContainerID := containerID[:12]
 		err = dm.netRulesManager.AssignNetworkRules(shortContainerID, common.GetContainerIpAddress(dm.ctx, ct))
 		if err != nil {
-			slog.Error("Error assigning network rules", "error", err)
+			dm.log.Error("Error assigning network rules", "error", err)
 		}
 	case "stop":
 	case "kill":
 		shortContainerID := containerID[:12]
 		err := dm.netRulesManager.UnassignNetworkRules(shortContainerID)
 		if err != nil {
-			slog.Error("Error unassigning network rules", "error", err)
+			dm.log.Error("Error unassigning network rules", "error", err)
 		}
 		err = dm.netRulesManager.RemoveNetworkLimiter(shortContainerID)
 		if err != nil {
-			slog.Error("Error removing network limiter", "error", err)
+			dm.log.Error("Error removing network limiter", "error", err)
 		}
 	case "destroy":
 		shortContainerID := containerID[:12]
 		err := dm.netRulesManager.DeleteNetworkRules(shortContainerID)
 		if err != nil {
-			slog.Error("Error deleting network rules", "error", err)
+			dm.log.Error("Error deleting network rules", "error", err)
 		}
 		if dm.opts.OnDestroyEvent != nil {
 			go dm.opts.OnDestroyEvent(dm.ctx)
@@ -179,7 +181,7 @@ func (dm *DockerMonitor) reconcileNetworkRules(table string, chain string) {
 	// List all DOCKER-USER rules that jump to Daytona chains
 	rules, err := dm.netRulesManager.ListDaytonaRules(table, chain)
 	if err != nil {
-		slog.Error("Error listing Daytona rules", "error", err)
+		dm.log.Error("Error listing Daytona rules", "error", err)
 		return
 	}
 
@@ -187,7 +189,7 @@ func (dm *DockerMonitor) reconcileNetworkRules(table string, chain string) {
 		// Parse the rule to extract chain name and source IP
 		args, err := netrules.ParseRuleArguments(rule)
 		if err != nil {
-			slog.Error("Error parsing rule", "rule", rule, "error", err)
+			dm.log.Error("Error parsing rule", "rule", rule, "error", err)
 			continue
 		}
 
@@ -203,26 +205,26 @@ func (dm *DockerMonitor) reconcileNetworkRules(table string, chain string) {
 		}
 
 		if chainName == "" || sourceIP == "" {
-			slog.Warn("Could not extract chain name or source IP from rule", "rule", rule)
+			dm.log.Warn("Could not extract chain name or source IP from rule", "rule", rule)
 			continue
 		}
 
 		// Extract container ID from chain name (remove DAYTONA-SB- prefix)
 		containerID := strings.TrimPrefix(chainName, "DAYTONA-SB-")
 		if containerID == chainName {
-			slog.Warn("Invalid chain name format", "chainName", chainName)
+			dm.log.Warn("Invalid chain name format", "chainName", chainName)
 			continue
 		}
 
 		// Inspect the container to get its current IP
 		container, err := dm.apiClient.ContainerInspect(dm.ctx, containerID)
 		if err != nil {
-			slog.Error("Error inspecting container", "containerID", containerID, "error", err)
+			dm.log.Error("Error inspecting container", "containerID", containerID, "error", err)
 			// Container doesn't exist, unassign the rules
 			if err := dm.netRulesManager.UnassignNetworkRules(containerID); err != nil {
-				slog.Error("Error unassigning rules for non-existent container", "containerID", containerID, "error", err)
+				dm.log.Error("Error unassigning rules for non-existent container", "containerID", containerID, "error", err)
 			} else {
-				slog.Info("Unassigned rules for non-existent container", "containerID", containerID)
+				dm.log.Info("Unassigned rules for non-existent container", "containerID", containerID)
 			}
 			continue
 		}
@@ -237,13 +239,13 @@ func (dm *DockerMonitor) reconcileNetworkRules(table string, chain string) {
 		}
 
 		if ipAddress != ruleIP {
-			slog.Warn("IP mismatch for container", "containerID", containerID, "ruleIP", ruleIP, "containerIP", container.NetworkSettings.IPAddress)
+			dm.log.Warn("IP mismatch for container", "containerID", containerID, "ruleIP", ruleIP, "containerIP", container.NetworkSettings.IPAddress)
 
 			// Delete only this specific mismatched rule
 			if err := dm.netRulesManager.DeleteChainRule(table, chain, rule); err != nil {
-				slog.Error("Error deleting mismatched rule for container", "containerID", containerID, "error", err)
+				dm.log.Error("Error deleting mismatched rule for container", "containerID", containerID, "error", err)
 			} else {
-				slog.Info("Deleted mismatched rule for container", "containerID", containerID)
+				dm.log.Info("Deleted mismatched rule for container", "containerID", containerID)
 			}
 		}
 	}
@@ -254,7 +256,7 @@ func (dm *DockerMonitor) reconcileChains(table string) {
 	// List all chains that start with DAYTONA-SB-
 	chains, err := dm.netRulesManager.ListDaytonaChains(table)
 	if err != nil {
-		slog.Error("Error listing Daytona chains", "error", err)
+		dm.log.Error("Error listing Daytona chains", "error", err)
 		return
 	}
 
@@ -262,20 +264,20 @@ func (dm *DockerMonitor) reconcileChains(table string) {
 		// Extract container ID from chain name (remove DAYTONA-SB- prefix)
 		containerID := strings.TrimPrefix(chain, "DAYTONA-SB-")
 		if containerID == chain {
-			slog.Warn("Invalid chain name format", "chain", chain)
+			dm.log.Warn("Invalid chain name format", "chain", chain)
 			continue
 		}
 
 		// Check if the container exists
 		_, err := dm.apiClient.ContainerInspect(dm.ctx, containerID)
 		if err != nil {
-			slog.Info("Container does not exist, deleting chain", "containerID", containerID, "chain", chain)
+			dm.log.Info("Container does not exist, deleting chain", "containerID", containerID, "chain", chain)
 
 			// Delete the orphaned chain
 			if err := dm.netRulesManager.ClearAndDeleteChain(table, chain); err != nil {
-				slog.Error("Error deleting orphaned chain", "chain", chain, "error", err)
+				dm.log.Error("Error deleting orphaned chain", "chain", chain, "error", err)
 			} else {
-				slog.Info("Deleted orphaned chain", "chain", chain)
+				dm.log.Info("Deleted orphaned chain", "chain", chain)
 			}
 		}
 	}
@@ -291,7 +293,7 @@ func (dm *DockerMonitor) reconcilerLoop() {
 		case <-dm.ctx.Done():
 			return
 		case <-ticker.C:
-			slog.Debug("Reconciling network rules")
+			dm.log.Debug("Reconciling network rules")
 			dm.reconcileNetworkRules("filter", "DOCKER-USER")
 			dm.reconcileNetworkRules("mangle", "PREROUTING")
 			dm.reconcileChains("filter")

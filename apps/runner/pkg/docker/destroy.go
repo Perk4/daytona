@@ -6,7 +6,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/containerd/errdefs"
@@ -45,7 +44,7 @@ func (d *DockerClient) Destroy(ctx context.Context, containerId string) error {
 	// Ignore err because we want to destroy the container even if it exited
 	state, _ := d.DeduceSandboxState(ctx, containerId)
 	if state == enums.SandboxStateDestroyed || state == enums.SandboxStateDestroying {
-		slog.DebugContext(ctx, "Sandbox is already destroyed or destroying", "containerId", containerId)
+		d.log.DebugContext(ctx, "Sandbox is already destroyed or destroying", "containerId", containerId)
 		d.statesCache.SetSandboxState(ctx, containerId, state)
 		return nil
 	}
@@ -62,7 +61,7 @@ func (d *DockerClient) Destroy(ctx context.Context, containerId string) error {
 				containerShortId := ct.ID[:12]
 				err = d.netRulesManager.DeleteNetworkRules(containerShortId)
 				if err != nil {
-					slog.ErrorContext(ctx, "Failed to delete sandbox network settings", "error", err)
+					d.log.ErrorContext(ctx, "Failed to delete sandbox network settings", "error", err)
 				}
 			}()
 
@@ -75,8 +74,8 @@ func (d *DockerClient) Destroy(ctx context.Context, containerId string) error {
 			return nil
 		}
 
-		slog.WarnContext(ctx, "Failed to remove stopped sandbox without force", "error", err)
-		slog.WarnContext(ctx, "Trying to remove stopped sandbox with force")
+		d.log.WarnContext(ctx, "Failed to remove stopped sandbox without force", "error", err)
+		d.log.WarnContext(ctx, "Trying to remove stopped sandbox with force")
 	}
 
 	// Use exponential backoff helper for container removal
@@ -105,7 +104,7 @@ func (d *DockerClient) Destroy(ctx context.Context, containerId string) error {
 		containerShortId := ct.ID[:12]
 		err = d.netRulesManager.DeleteNetworkRules(containerShortId)
 		if err != nil {
-			slog.ErrorContext(ctx, "Failed to delete sandbox network settings", "error", err)
+			d.log.ErrorContext(ctx, "Failed to delete sandbox network settings", "error", err)
 		}
 	}()
 
@@ -146,7 +145,7 @@ func (d *DockerClient) RemoveDestroyed(ctx context.Context, containerId string) 
 		return err
 	}
 
-	slog.DebugContext(ctx, "Destroyed sandbox removed successfully", "containerId", containerId)
+	d.log.DebugContext(ctx, "Destroyed sandbox removed successfully", "containerId", containerId)
 
 	return nil
 }
