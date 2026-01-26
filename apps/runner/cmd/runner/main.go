@@ -253,11 +253,10 @@ func main() {
 		logger.Info("Signal received, shutting down")
 
 		cancel()
+
 		monitor.Stop()
 		netRulesManager.Stop()
 		apiServer.Stop()
-
-		time.Sleep(1 * time.Second) // Give some time for goroutines to finish
 
 		shutdownLogging()
 		shutdownTracing()

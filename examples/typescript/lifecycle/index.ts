@@ -40,9 +40,9 @@ async function main() {
 
   console.log(`Printing first sandbox -> id: ${result.items[0].id} state: ${result.items[0].state}`)
 
-  // console.log('Deleting sandbox')
-  // await sandbox.delete()
-  // console.log('Sandbox deleted')
+  console.log('Deleting sandbox')
+  await sandbox.delete()
+  console.log('Sandbox deleted')
 }
 
 main().catch(console.error)
