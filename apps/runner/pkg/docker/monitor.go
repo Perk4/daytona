@@ -239,7 +239,7 @@ func (dm *DockerMonitor) reconcileNetworkRules(table string, chain string) {
 		}
 
 		if ipAddress != ruleIP {
-			dm.log.Warn("IP mismatch for container", "containerID", containerID, "ruleIP", ruleIP, "containerIP", container.NetworkSettings.IPAddress)
+			dm.log.Warn("IP mismatch for container", "containerID", containerID, "ruleIP", ruleIP, "containerIP", ipAddress)
 
 			// Delete only this specific mismatched rule
 			if err := dm.netRulesManager.DeleteChainRule(table, chain, rule); err != nil {
