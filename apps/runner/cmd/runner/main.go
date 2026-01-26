@@ -74,7 +74,11 @@ func main() {
 		return
 	}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation(), client.WithTraceProvider(otel.GetTracerProvider()))
+	cli, err := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+		client.WithTraceProvider(otel.GetTracerProvider()),
+	)
 	if err != nil {
 		logger.Error("Error creating Docker client", "error", err)
 		return

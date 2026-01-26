@@ -157,7 +157,7 @@ func (e *Executor) executeJob(ctx context.Context, job *apiclient.Job) (any, err
 	if err != nil {
 		span.RecordError(err)
 		span.SetAttributes(attribute.Bool("error", true))
-		span.SetStatus(codes.Error, err.Error())
+		span.SetStatus(codes.Error, "job execution failed")
 	}
 
 	return resultMetadata, err
@@ -199,7 +199,7 @@ func (e *Executor) updateJobStatus(ctx context.Context, jobID string, status api
 	if err != nil {
 		span.RecordError(err)
 		span.SetAttributes(attribute.Bool("error", true))
-		span.SetStatus(codes.Error, err.Error())
+		span.SetStatus(codes.Error, "update job status failed")
 	}
 
 	return err
