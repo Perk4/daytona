@@ -13,6 +13,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -156,6 +157,7 @@ func (e *Executor) executeJob(ctx context.Context, job *apiclient.Job) (any, err
 	if err != nil {
 		span.RecordError(err)
 		span.SetAttributes(attribute.Bool("error", true))
+		span.SetStatus(codes.Error, err.Error())
 	}
 
 	return resultMetadata, err
@@ -197,6 +199,7 @@ func (e *Executor) updateJobStatus(ctx context.Context, jobID string, status api
 	if err != nil {
 		span.RecordError(err)
 		span.SetAttributes(attribute.Bool("error", true))
+		span.SetStatus(codes.Error, err.Error())
 	}
 
 	return err
