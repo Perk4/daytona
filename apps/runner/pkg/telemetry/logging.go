@@ -19,12 +19,10 @@ import (
 // InitLogging optionally adds OTEL log shipping to the provided slog instance
 // If OTEL logging is enabled, it sets up the global slog handler to fanout to both console and OTEL
 // Returns a shutdown function (no-op if OTEL is disabled)
-func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, environment string) (func(), error) {
+func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, otlpExporterTimeout time.Duration, environment string) (func(), error) {
 	if !otelLoggingEnabled {
 		return func() {}, nil
 	}
-
-	ctx := context.Background()
 
 	// Create resource with service information
 	res, err := getOtelResource(environment)
@@ -33,6 +31,8 @@ func InitLogging(logger *slog.Logger, otelLoggingEnabled bool, environment strin
 	}
 
 	// Create OTLP log exporter
+	ctx, cancel := context.WithTimeout(context.Background(), otlpExporterTimeout)
+	defer cancel()
 	exporter, err := otlploghttp.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTLP log exporter: %w", err)

@@ -17,7 +17,7 @@ import (
 )
 
 // InitTracing initializes OpenTelemetry tracing
-func InitTracing(otelTracingEnabled bool, otelSampleRate float64, environment string) (func(), error) {
+func InitTracing(otelTracingEnabled bool, otelSampleRate float64, otlpExporterTimeout time.Duration, environment string) (func(), error) {
 	if !otelTracingEnabled {
 		// Return a no-op shutdown function when tracing is disabled
 		return func() {}, nil
@@ -34,7 +34,10 @@ func InitTracing(otelTracingEnabled bool, otelSampleRate float64, environment st
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	exporter, err := otlptrace.New(context.Background(), otlptracehttp.NewClient())
+	// Create OTLP exporter
+	ctx, cancel := context.WithTimeout(context.Background(), otlpExporterTimeout)
+	defer cancel()
+	exporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
