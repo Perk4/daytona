@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/daytonaio/runner/cmd/runner/config"
@@ -53,7 +54,6 @@ func main() {
 		logger.Error("Failed to initialize tracing", "error", err)
 		return
 	}
-	defer shutdownTracing()
 
 	// Init logging
 	shutdownLogging, err := telemetry.InitLogging(logger, cfg.OtelLoggingEnabled, cfg.OtlpExporterTimeout, cfg.Environment)
@@ -61,7 +61,6 @@ func main() {
 		logger.Error("Failed to initialize OTEL logging", "error", err)
 		return
 	}
-	defer shutdownLogging()
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation(), client.WithTraceProvider(otel.GetTracerProvider()))
 	if err != nil {
@@ -82,7 +81,6 @@ func main() {
 		logger.Error("Failed to start net rules manager", "error", err)
 		return
 	}
-	defer netRulesManager.Stop()
 
 	daemonPath, err := daemon.WriteStaticBinary("daemon-amd64")
 	if err != nil {
@@ -97,7 +95,6 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	statesCache := cache.GetStatesCache(cfg.CacheRetentionDays)
 
@@ -131,7 +128,6 @@ func main() {
 			logger.Error("Failed to start Docker events monitor", "error", err)
 		}
 	}()
-	defer monitor.Stop()
 
 	sandboxService := services.NewSandboxService(logger, statesCache, dockerClient)
 
@@ -235,13 +231,25 @@ func main() {
 	}()
 
 	interruptChannel := make(chan os.Signal, 1)
-	signal.Notify(interruptChannel, os.Interrupt)
+	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 
 	select {
 	case err := <-apiServerErrChan:
 		logger.Error("API server error", "error", err)
 		return
 	case <-interruptChannel:
+		logger.Info("Signal received, shutting down")
+
+		cancel()
+		monitor.Stop()
+		netRulesManager.Stop()
 		apiServer.Stop()
+
+		time.Sleep(1 * time.Second) // Give some time for goroutines to finish
+
+		shutdownLogging()
+		shutdownTracing()
+
+		logger.Info("Shutdown complete")
 	}
 }
