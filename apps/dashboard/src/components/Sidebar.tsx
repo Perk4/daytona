@@ -113,7 +113,7 @@ export function Sidebar({ isBannerVisible, billingEnabled, version }: SidebarPro
   const { selectedOrganization, authenticatedUserOrganizationMember, authenticatedUserHasPermission } =
     useSelectedOrganization()
   const { count: organizationInvitationsCount } = useUserOrganizationInvitations()
-  const { isInitialized: webhooksInitialized, openAppPortal } = useWebhooks()
+  const { isInitialized: webhooksInitialized } = useWebhooks()
   const orgInfraEnabled = useFeatureFlagEnabled(FeatureFlags.ORGANIZATION_INFRASTRUCTURE)
 
   const sidebarItems = useMemo(() => {
@@ -168,8 +168,7 @@ export function Sidebar({ isBannerVisible, billingEnabled, version }: SidebarPro
       arr.push({
         icon: <Mail size={16} strokeWidth={1.5} />,
         label: 'Webhooks',
-        path: '#webhooks' as any, // This will be handled by onClick
-        onClick: () => openAppPortal(),
+        path: RoutePath.WEBHOOKS,
       })
     }
 
@@ -193,7 +192,7 @@ export function Sidebar({ isBannerVisible, billingEnabled, version }: SidebarPro
     }
 
     return arr
-  }, [authenticatedUserOrganizationMember?.role, selectedOrganization?.personal, webhooksInitialized, openAppPortal])
+  }, [authenticatedUserOrganizationMember?.role, selectedOrganization?.personal, webhooksInitialized])
 
   const billingItems = useMemo(() => {
     if (!billingEnabled || authenticatedUserOrganizationMember?.role !== OrganizationUserRoleEnum.OWNER) {
