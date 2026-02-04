@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 import { OrganizationUser } from './organization-user.entity'
 import { OrganizationRole } from './organization-role.entity'
 import { OrganizationInvitation } from './organization-invitation.entity'
 import { RegionQuota } from './region-quota.entity'
 
 @Entity()
+@Index('idx_organization_deleted_at', ['deletedAt'], { where: '"deletedAt" IS NOT NULL' })
 export class Organization {
   @PrimaryGeneratedColumn('uuid')
   id: string
@@ -162,6 +163,12 @@ export class Organization {
     type: 'timestamp with time zone',
   })
   updatedAt: Date
+
+  @Column({
+    nullable: true,
+    type: 'timestamp with time zone',
+  })
+  deletedAt?: Date
 
   constructor(defaultRegionId?: string) {
     if (defaultRegionId) {
